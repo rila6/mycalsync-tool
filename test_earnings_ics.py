@@ -39,6 +39,25 @@ class T(unittest.TestCase):
         self.assertEqual((by["JPM"]["session"], by["JPM"]["inferred"]), ("BMO", False))
         self.assertEqual(by["XYZ"]["session"], "TBD")
 
+    def test_foreign_listing_is_date_only_under_requested_ticker(self):
+        fx = [{"symbol": "TSM", "date": "2026-11-05", "hour": "bmo", "year": 2026, "quarter": 4},
+              {"symbol": "AAPL", "date": "2026-11-05", "hour": "amc", "year": 2026, "quarter": 4}]
+        with tempfile.TemporaryDirectory() as d:
+            cfg = Path(d, "c.toml")
+            cfg.write_text('[[watchlist]]\nname="a"\nfile="a-1.ics"\ntickers=["TSM","AAPL"]\n')
+            raw = [dict(fx[0], symbol="2330.TW"), fx[1]]  # Finnhub answers TSM with the Taiwan listing
+            with mock.patch.dict("os.environ", {"FINNHUB_API_KEY": "k"}), \
+                    mock.patch("sys.argv", ["x", "--config", str(cfg), "--out", str(Path(d, "o"))]), \
+                    mock.patch.object(e, "fetch_earnings",
+                                      side_effect=lambda s, *a: [raw[0]] if s == "TSM" else [raw[1]]), \
+                    mock.patch.object(e, "REQUEST_PAUSE", 0):
+                self.assertEqual(e.main(), 0)
+            ics = Path(d, "o", "a-1.ics").read_text()
+        self.assertIn("SUMMARY:TSM earnings [date only]", ics)
+        self.assertNotIn("2330", ics)
+        self.assertIn("DTSTART;VALUE=DATE:20261105", ics)
+        self.assertIn("SUMMARY:AAPL earnings [AMC]", ics)
+
     def test_moved_date_replaces_same_quarter(self):
         rows = [{"symbol": "A", "date": "2026-11-01", "hour": "bmo", "year": 2026, "quarter": 4},
                 {"symbol": "A", "date": "2026-11-05", "hour": "bmo", "year": 2026, "quarter": 4}]

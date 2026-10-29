@@ -29,7 +29,9 @@ SESSION_TEXT = {
     "AMC": "After market close",
     "DMH": "During market hours",
     "TBD": "Session not announced",
+    "DATE": "Date only (reported on the home-market listing; US session not shown)",
 }
+TAGS = {"DATE": "date only"}
 # Wide US-Eastern windows (start, minutes): the width signals that the exact release
 # minute is unknown. TBD has no window and stays an all-day event.
 DEFAULT_BLOCKS = {"BMO": ("07:00", 150), "AMC": ("16:00", 120), "DMH": ("11:00", 120)}
@@ -113,7 +115,9 @@ def normalise(rows: list[dict], today: date, days_back: int) -> list[dict]:
         for r in sorted(quarters.values(), key=lambda r: r["date"]):
             session = SESSIONS.get((r.get("hour") or "").lower())
             inferred = False
-            if session:
+            if r.get("foreign"):  # home-listing row: the date is right, BMO/AMC is not
+                session = "DATE"
+            elif session:
                 last_known = session
             elif last_known:
                 session, inferred = last_known, True
@@ -166,7 +170,7 @@ def build_event(ev: dict, wl: dict, now: datetime) -> list[str]:
             f"DTSTART;VALUE=DATE:{d:%Y%m%d}",
             f"DTEND;VALUE=DATE:{d + timedelta(days=1):%Y%m%d}",
         ]
-    tag = f"{session}?" if ev["inferred"] else session
+    tag = TAGS.get(session, f"{session}?" if ev["inferred"] else session)
     desc = [SESSION_TEXT[session] + (" (inferred from the previous report)" if ev["inferred"] else "")]
     if ev["eps_act"] is not None:
         desc.append(f"Reported EPS: {ev['eps_act']}")
@@ -238,7 +242,11 @@ def main() -> int:
             print(f"warning: no earnings data at all for {sym} (typo, delisted, or unsupported ticker?)",
                   file=sys.stderr)
         for r in rows:
-            r.setdefault("symbol", sym)
+            # Finnhub may answer with the home listing (TSM -> 2330.TW). Show the ticker the
+            # user asked for, and treat the session as unreliable (home-market hours).
+            if (r.get("symbol") or sym).upper() != sym:
+                r["foreign"] = True
+            r["symbol"] = sym
         events[sym] = normalise(rows, today, args.days_back)
 
     if failures:

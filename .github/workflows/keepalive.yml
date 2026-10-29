@@ -10,9 +10,9 @@ permissions:
   contents: write
 jobs:
   keepalive:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Commit if the repo has been quiet for 30+ days
         run: |
           age=$(( ($(date +%s) - $(git log -1 --format=%ct)) / 86400 ))
