@@ -1,0 +1,18 @@
+# 1-3 watchlists, 1-30 tickers each. One live .ics URL per watchlist.
+# 'file' is the URL path: make it unguessable (e.g. `python3 -c "import secrets;print(secrets.token_urlsafe(9))"`).
+# reminders: any of 30m, 2h, 1d, 1w (before the event start). mode: "block" (timed placeholder) or "allday".
+# Optional per-list overrides for block start, US Eastern: bmo_start, amc_start, dmh_start, tbd_start ("HH:MM").
+
+[[watchlist]]
+name = "Mega Cap Tech"
+file = "tech-REPLACE_ME1.ics"
+tickers = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META"]
+reminders = ["1d", "1h"]
+mode = "block"
+
+[[watchlist]]
+name = "Banks"
+file = "banks-REPLACE_ME2.ics"
+tickers = ["JPM", "BAC", "GS", "MS", "C", "WFC"]
+reminders = ["1d"]
+mode = "allday"
